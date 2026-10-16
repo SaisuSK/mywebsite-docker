@@ -1,14 +1,19 @@
-name: Docker Website CI
+
+name: Docker Website CI/CD
 
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
-  docker-build:
+  build-and-publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout source code
@@ -16,3 +21,17 @@ jobs:
 
       - name: Build Docker image
         run: docker build -t mywebsite:latest .
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish Docker image
+        run: |
+          IMAGE_ID=ghcr.io/${{ github.repository }}
+          IMAGE_ID=$(echo "$IMAGE_ID" | tr '[:upper:]' '[:lower:]')
+          docker tag mywebsite:latest "$IMAGE_ID:latest"
+          docker push "$IMAGE_ID:latest"
